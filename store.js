@@ -5,8 +5,7 @@ function randomString() {
     return crypto.randomBytes(4).toString('hex')
 }
 
-function saltHashPassword(password) {
-    const salt = randomString();
+function saltHashPassword(password, salt = randomString()) {
     const hash = crypto
         .createHmac('sha512', salt)
         .update(password);
@@ -29,5 +28,23 @@ module.exports = {
             encrypted_password: hash,
             username,
         })
+    },
+    authenticate({ username, password }) {
+        return knex('user')
+            .where({ username })
+            .then(([user]) => {
+                if(!user) {
+                    return { success: false }
+                }
+
+                const { hash } = saltHashPassword(
+                    password,
+                    user.salt
+                )
+
+                return {
+                    success: hash === user.encrypted_password
+                }
+            })
     }
 }
